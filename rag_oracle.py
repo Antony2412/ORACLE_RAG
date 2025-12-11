@@ -13,6 +13,8 @@ from langchain_core.documents import Document
 from langchain_oracledb.vectorstores import oraclevs
 from langchain_oracledb.vectorstores.oraclevs import OracleVS
 from langchain_community.vectorstores.utils import DistanceStrategy
+from langchain_community.document_loaders import WebBaseLoader
+
 
 load_dotenv()
 
@@ -55,6 +57,26 @@ def pdf_to_documents(pdf_path: str) -> List[Document]:
         d.metadata = d.metadata or {}
         d.metadata["chunk_id"] = i
     return docs
+
+def url_to_documents(url: str):
+    """Load webpage content and split into chunks."""
+    loader = WebBaseLoader(url)
+    docs = loader.load()
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        separators=["\n\n", "\n", ".", "!", "?", " ", ""],
+    )
+
+    docs = splitter.split_documents(docs)
+
+    # Add metadata
+    for i, d in enumerate(docs):
+        d.metadata["source_url"] = url
+        d.metadata["chunk_id"] = i
+
+    return docs    
 
 
 def build_oracle_vector_store(docs: List[Document]):

@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from rag_oracle import (
     pdf_to_documents,
     build_oracle_vector_store,
+    url_to_documents,
     create_vector_index,
     answer_question,
 )
@@ -36,10 +37,14 @@ if "vector_store" not in st.session_state:
 if "ingested" not in st.session_state:
     st.session_state.ingested = False
 
-tab_ingest, tab_query = st.tabs(["📥 Ingest PDF", "❓ Ask questions"])
+tab_ingest_pdf, tab_ingest_url, tab_query = st.tabs([
+    "📥 Ingest PDF",
+    "🌐 Ingest Webpage",
+    "❓ Ask questions"
+])
 
 
-with tab_ingest:
+with tab_ingest_pdf:
     st.subheader("1. Upload & Ingest PDF into Oracle Vector DB")
 
     uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"])
@@ -82,3 +87,25 @@ with tab_query:
                     st.write(answer)
                 except Exception as e:
                     st.error(f"Error during RAG query: {e}")
+
+with tab_ingest_url:
+    st.subheader("🌐 Ingest Webpage Content into Oracle Vector DB")
+
+    url = st.text_input("Enter webpage URL")
+
+    if st.button("🚀 Scrape & Ingest Webpage"):
+        if url.strip():
+            with st.spinner("Scraping webpage, chunking, embedding, and storing in Oracle..."):
+                docs = url_to_documents(url)
+
+                st.write(f"Extracted and split into **{len(docs)}** chunks. Storing in Oracle...")
+
+                conn, vector_store = build_oracle_vector_store(docs)
+                create_vector_index(conn, vector_store)
+
+                st.session_state.vector_store = vector_store
+                st.session_state.ingested = True
+
+                st.success("🌐 Webpage ingestion complete and vector index created!")
+        else:
+            st.error("Please enter a valid URL.")
